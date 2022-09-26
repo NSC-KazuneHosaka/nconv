@@ -1,0 +1,3 @@
+nts.hc.ctx.em.infra.repository.employee.HealthlifeRepository.get (),,,,,,,,,,"20,992 ms",100.00%
+,nts.hc.ctx.em.infra.repository.employee.HealthlifeRepository.getEmployee (),,,,,,,,,"15,106 ms",71.96%
+,nts.hc.shr.infra.data.repository.query.TypedQueryWrapper.getList (),,,,,,,,,"5,886 ms",28.04%
