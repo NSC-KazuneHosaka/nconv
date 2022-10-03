@@ -1,3 +1,5 @@
+#include "HKC/hklog.h"
+#include "HKC/hkmem.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -475,6 +477,9 @@ linedata_t* findWriteLine(linedata_t* ld){
     char RepositoryImpl[] = "RepositoryImpl";
     char Repository[] = "Repository";
     char filtered_out[] = "Filtered out";
+    char TypedQueryWrapper[] = "nts.hc.shr.infra.data.repository.query.TypedQueryWrapper";
+    char ListMultiExecutor[] = "nts.hc.shr.infra.async.ListMultiExecutor";
+    char SubjectContext[] = "nts.hc.ctx.cm.dom.careplan.common.SubjectContext";
     char self_time[] = "Self time";
     char zeroms[] = "0.0 ms";
     int flag=0;
@@ -483,11 +488,14 @@ linedata_t* findWriteLine(linedata_t* ld){
     /* 末端 -> RepositoryImplを優先 */
     if(isEnd(ld)) {
         write = ld;
-        strncpy(filter_in[0], RepositoryImpl, sizeof(filter_in));
-        strncpy(filter_out[0], "$", sizeof(filter_out[0]));
+        strncpy(filter_in[0], RepositoryImpl, sizeof(filter_in[0]));
+        strncpy(filter_out[0], TypedQueryWrapper, sizeof(filter_out[0]));
+        strncpy(filter_out[1], ListMultiExecutor, sizeof(filter_out[1]));
+        strncpy(filter_out[2], SubjectContext, sizeof(filter_out[2]));
+        strncpy(filter_out[3], "$", sizeof(filter_out[3]));
         do {
             write = write->prev;
-            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 1)){                            
+            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){                            
                 flag=1;
                 break;
             }
@@ -498,20 +506,20 @@ linedata_t* findWriteLine(linedata_t* ld){
             write = ld;
             do {
                 write = write->prev;
-                if(contains(write->name, filter_in, 1)){
+                if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
                     flag=1;
                     break;
                 }
             } while(isSameTimeBefore(write));
         }
-
+        
         /* Repository */
         if(flag==0){
             write = ld;
             strncpy(filter_in[0], Repository, sizeof(filter_in));
             do {
                 write = write->prev;
-                if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 1)){
+                if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){
                     flag=1;
                     break;
                 }
@@ -523,7 +531,7 @@ linedata_t* findWriteLine(linedata_t* ld){
             write = ld;
             do {
                 write = write->prev;
-                if(contains(write->name, filter_in, 1)){
+                if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
                     flag=1;
                     break;
                 }
