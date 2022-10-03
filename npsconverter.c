@@ -1,3 +1,5 @@
+#include "HKC/hklog.h"
+#include "HKC/hkmem.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
