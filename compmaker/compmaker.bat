@@ -1,0 +1,2 @@
+compmaker.exe
+PAUSE

@@ -8,7 +8,7 @@
 #include <time.h>
 #include <errno.h>
 
-// #define debug
+#define debug
 // #define cmptest
 
 #define NAME 0
@@ -45,6 +45,11 @@ typedef struct linedataptr {
     struct linedataptr* prev;
 } ldp_t;
 
+FILE* lfp = NULL;
+
+void error(void) {
+    if(lfp!=NULL) { fclose(lfp); }
+}
 
 int openFile(FILE** fpp, const char* fileName, const char* openMode);
 bool isNullEnd(const char* str, size_t maxsize);
@@ -68,6 +73,7 @@ void free_linedataptr(ldp_t* ldptr);
 
 
 int main(int argc, char* argv[]) {
+    char logFileName[] = "a.log";
     char input[MAX_SIZE] = {0};
     char output[MAX_SIZE] = {0};
     FILE* fpin = NULL;
@@ -110,6 +116,16 @@ int main(int argc, char* argv[]) {
     clock_t start_clock, end_clock;
 
 
+    hkloginit();
+    hklog_customFormat(ALL, ALL);
+    if(openFile(&lfp, logFileName, "w") != 0) {
+        printf("openFile() error : %s\n", logFileName);
+        error();
+        return 1;
+    }
+
+    hklog(lfp, INFO, "start logging\n");
+
     /* 入力ファイル名 */
     if (argc <= 1){
         printf("Input the csv file : ");
@@ -128,6 +144,7 @@ int main(int argc, char* argv[]) {
         strncpy(input, argv[1], sizeof(input));
         if(!isNullEnd(input, sizeof(input))) {
             printf("The input file is incorrect or name is too long.\n");
+            error();
             return 1;
         }
     }
@@ -138,6 +155,7 @@ int main(int argc, char* argv[]) {
     /* ファイルオープン */
     if(openFile(&fpin, input, "r") != 0) {
         printf("openFile() error\n");
+        error();
         return 1;
     }
 
@@ -156,6 +174,7 @@ int main(int argc, char* argv[]) {
      || strcmp(buf[TOTAL_TIME_CPU], "\"Total Time (CPU)\"") != 0
      || strcmp(buf[HITS], "\"Hits\"\n") != 0) {
         printf("The input is incorrect. Check the version of VisualVM (2.4?) and input file.\n");
+        error();
         return 1;
     }
     printf("check low 1 : OK\n");
@@ -175,6 +194,7 @@ int main(int argc, char* argv[]) {
     }
     if(openFile(&fpout, output, "w") != 0) {
         printf("openFile() error\n");
+        error();
         return 1;
     }
 
@@ -360,6 +380,8 @@ int main(int argc, char* argv[]) {
     end_clock = clock();
     printf("Total time: %ld ms\n", (end_time - start_time) * 1000);
     printf("CPU Time : %.1f ms\n", ((double)(end_clock - start_clock) / CLOCKS_PER_SEC) * 1000);
+
+    if(lfp != NULL) { fclose(lfp); }
 	return 0;
 }
 
@@ -668,7 +690,7 @@ int writelinedata(FILE* fpout, const linedata_t* linedata, const int maxstage){
         indent, linedata->name, nameToTime, linedata->totaltime, linedata->totalTimePer);
 #endif
 #ifdef cmptest
-    writtenChars = fprintf(fpout, "%s%s\n",indent, linedata->name);
+    writtenChars = fprintf(fpout, ",%s%s\n",indent, linedata->name);
 #endif
 
     return writtenChars * sizeof(char);
