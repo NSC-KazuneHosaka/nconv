@@ -75,7 +75,6 @@ int main(int argc, char* argv[]){
             i++;
         }
         while(buf[i] != ',' && buf[i] != '\n') {
-            printf("output \"%c\" : %c != %c && %c != %c\n", buf[i], buf[i], ',', buf[i], '\n');
             output[i] = buf[i];
             i++;
         }

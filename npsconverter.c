@@ -9,7 +9,7 @@
 #include <errno.h>
 
 #define debug
-// #define cmptest
+#define cmptest
 
 #define NAME 0
 #define TOTAL_TIME 1
@@ -32,9 +32,9 @@ typedef struct lineData {
     char* totaltimecpu;
     char* totalCpuPer;
     char* hits;
+    int stage;  /* 出力するときのインデントの数 */
+    int space; /* 入力のcsvでの空白の数 */
     int end;
-    int stage;
-    int space;
     struct lineData* next;
     struct lineData* prev;
 } linedata_t;
@@ -51,11 +51,20 @@ void error(void) {
     if(lfp!=NULL) { fclose(lfp); }
 }
 
+// int makeLineData(linedata_t* ld, 
+//                 const char* const name,
+//                 const char* const totalTime,
+//                 const char* const totalTimePer,
+//                 const char* const totalTimeCpu,
+//                 const char* const totalTimeCpuPer,
+//                 const char* const hits,
+//                 int stage, int space, int end);
 int openFile(FILE** fpp, const char* fileName, const char* openMode);
 bool isNullEnd(const char* str, size_t maxsize);
 int getCells(const char* source, size_t soureSize, char (*buffer)[MAX_SIZE], size_t bufSize[MAX_SIZE], const int numOfCells);
 int extractInsideDQ(char* str);
 double timetof(const char* time, size_t sizeOfTime);
+double timepertof(const char* timeper, size_t sizeOfTimeper);
 double extRound(const double num, const int index);
 int contains(const char* str, const char (*filterArr)[MAX_SIZE], const int numOfStr);
 linedata_t* findWriteLine(linedata_t* ld);
@@ -67,6 +76,9 @@ bool isSameTimeBefore(linedata_t* linedata);
 bool isEnd(linedata_t* linedata);
 int stagecmp(linedata_t* ld1, linedata_t* ld2);
 linedata_t* threadSearch(const linedata_t* linedata, const char (*filter_in)[MAX_SIZE], const char (*));
+int dcompforaddld(const double num1, const double num2, const int methodcnt);
+int maketime(char* time, size_t sizeOfTime, double dtime);
+int makeper(char* per, size_t sizeOfPer, double dper);
 int writelinedata(FILE* fpout, const linedata_t* linedata, const int maxstage);
 void free_lineData(linedata_t* linedata);
 void free_linedataptr(ldp_t* ldptr);
@@ -107,7 +119,7 @@ int main(int argc, char* argv[]) {
     char self_time[] = "Self time";
     char zeroms[] = "0.0 ms";
 
-    int writtenBytes = 0;
+    unsigned int writtenBytes = 0;
     int flag = 0;
     int roop = 0;
     int i=0, j=0;
@@ -125,6 +137,8 @@ int main(int argc, char* argv[]) {
     }
 
     hklog(lfp, INFO, "start logging\n");
+
+    hkmeminit();
 
     /* 入力ファイル名 */
     if (argc <= 1){
@@ -301,7 +315,7 @@ int main(int argc, char* argv[]) {
         if(stage > maxstage) { maxstage = stage; }
     }
 
-    /* ファイルへの出力ループ */
+    /* 出力する行の抽出 */
     linedata = ldstart;
     stage = 0;
     strncpy(filter_in[0], "nts.", sizeof(filter_in));
@@ -310,7 +324,6 @@ int main(int argc, char* argv[]) {
             if((linedata->stage != stage || !isSameTimeBefore(linedata))) {
                 /* 出力する行を特定 */
                 linedata_t* write = findWriteLine(linedata);
-                
                 /* ファイル出力する行へのポインタを保存 */
                 if(strcmp(write->totaltime, zeroms) != 0) {
                     /* ldptrのメモリ確保 */
@@ -332,7 +345,7 @@ int main(int argc, char* argv[]) {
                             ldptr->prev->ld = findWriteLine(ldptr->prev->ld->next); /* 元々保持していた行の次の行から遡行させる */
                         }
                     }
-                    /* lastntsの更新 */                    
+                    /* lastntsの更新 */      
                     if(contains(ldptr->ld->name, filter_in, 1) || (isSameNameStr(ldptr->ld, filtered_out) && stagecmp(ldptr->prev->ld, ldptr->ld) < 0)) {                     
                         lastnts = ldptr->ld;
                     }
@@ -359,6 +372,92 @@ int main(int argc, char* argv[]) {
         free(ldptr);
     }
 
+    /* ここユーザー関数にしたーーーーーい */
+    /* 分岐の前と分岐後の合計で実行時間が違わないかの確認 
+       必要に応じてFiltered outを挿入*/
+    ldptr = ldptrstart;
+    while(ldptr->next != NULL) {
+        /* 次の行のほうがステージが大きかった時 */
+        if(ldptr->next->ld->stage > ldptr->ld->stage) {
+            double ldptime = timetof(ldptr->ld->totaltime, strlen(ldptr->ld->totaltime) + 1);
+            double ldptimeper = timetof(ldptr->ld->totalTimePer, strlen(ldptr->ld->totalTimePer) + 1);
+            double ldptimecpu = timetof(ldptr->ld->totaltimecpu, strlen(ldptr->ld->totaltimecpu) + 1);
+            double ldptimecpuper = timetof(ldptr->ld->totalCpuPer, strlen(ldptr->ld->totalCpuPer) + 1);
+            ldp_t* tmp = ldptr->next;
+            totaltime = 0;
+            timecpu = 0;
+            double totalTimePer = 0;
+            double totalTimeCpuPer = 0;
+            int methodcnt=0;
+            /* 今の行+1のステージを持つメソッドの時間を合計する 
+            　 stageが今の行以下になるまで続ける */
+            //printf("tmp->stage:%d, ldptr->stage:%d\n", tmp->ld->stage, ldptr->ld-stage);
+            while(tmp->ld->stage > ldptr->ld->stage) {
+                if(tmp->ld->stage == ldptr->ld->stage + 1) {
+                    totaltime += timetof(tmp->ld->totaltime, strlen(tmp->ld->totaltime)+1);
+                    timecpu += timetof(tmp->ld->totaltimecpu, strlen(tmp->ld->totaltimecpu)+1);
+                    methodcnt++;
+                }
+                tmp = tmp->next;
+                if(tmp==NULL) { break; }
+            }
+            /* 計算が合わない場合はFiltered outを挿入して整合する */
+            if(dcompforaddld(ldptime, totaltime, methodcnt) != 0
+            //|| dcompforaddld(ldptimecpu, timecpu, methodcnt) != 0
+            ) {                
+                strncpy(buf[NAME], filtered_out, sizeof(buf[NAME]));
+                double timediff = ldptime - totaltime;
+                printf("(%g / %g) * 100 = %g\n", timediff, maxtime, (timediff/maxtime) * 100);
+                double timeperdiff = (timediff/maxtime) * 100;
+                printf("timeperdiff:%g\n", timeperdiff);
+                double cpudiff = ldptimecpu - timecpu;
+                double cpuperdiff = (cpudiff/maxtimecpu) * 100;
+                maketime(buf[TOTAL_TIME], sizeof(buf[TOTAL_TIME]), timediff);
+                makeper(totalPer, sizeof(totalPer), timeperdiff);
+                maketime(buf[TOTAL_TIME_CPU], sizeof(buf[TOTAL_TIME_CPU]), cpudiff);
+                makeper(totalCpuPer, sizeof(totalCpuPer), cpuperdiff);
+                snprintf(buf[HITS], sizeof(buf[HITS]), "0");
+
+                linedata_t* addld = (linedata_t*)malloc(sizeof(linedata_t));
+                /* 文字列のメモリ確保 */ 
+                addld->name         = (char*)malloc(sizeof(char) * strlen(buf[NAME])+1);
+                addld->totaltime    = (char*)malloc(sizeof(char) * strlen(buf[TOTAL_TIME])+1);
+                addld->totalTimePer = (char*)malloc(sizeof(char) * strlen(totalPer)+1);
+                addld->totaltimecpu = (char*)malloc(sizeof(char) * strlen(buf[TOTAL_TIME_CPU])+1);
+                addld->totalCpuPer  = (char*)malloc(sizeof(char) * strlen(totalCpuPer)+1);
+                addld->hits         = (char*)malloc(sizeof(char) * strlen(buf[HITS])+1);
+                /* 文字列のコピー */
+                strncpy(addld->name, buf[NAME], strlen(buf[NAME])+1);
+                strncpy(addld->totaltime, buf[TOTAL_TIME], strlen(buf[TOTAL_TIME])+1);
+                strncpy(addld->totalTimePer, totalPer, strlen(totalPer)+1);
+                strncpy(addld->totaltimecpu, buf[TOTAL_TIME_CPU], strlen(buf[TOTAL_TIME_CPU])+1);
+                strncpy(addld->totalCpuPer, totalCpuPer, strlen(totalCpuPer)+1);
+                strncpy(addld->hits, buf[HITS], strlen(buf[HITS])+1);
+                addld->stage = ldptr->next->ld->stage;
+                addld->space = ldptr->next->ld->space;
+                addld->end = 0;
+
+                /* Filtered out を挿入するべき箇所を見つける */
+                ldp_t* tmp = ldptr;
+                while(tmp->next != NULL && tmp->next->ld->stage > ldptr->ld->stage) {
+                    tmp = tmp->next;
+                }
+                /* Filtered outを挿入するのはtmpの次 */
+                /* ldptrのメモリ確保 */
+                ldptrprev = ldptr;
+                ldptr = (ldp_t*)malloc(sizeof(ldp_t));
+                ldptr->ld = addld;
+                ldptr->next = tmp->next;
+                ldptr->next->prev = ldptr;
+                ldptr->prev = tmp;
+                ldptr->prev->next = ldptr;
+
+                ldptr = ldptrprev;          
+            }
+        }
+        ldptr = ldptr->next;
+    }
+
     /* ファイル出力 */
     ldptr = ldptrstart;
     while(ldptr != NULL) {
@@ -375,7 +474,7 @@ int main(int argc, char* argv[]) {
     fclose(fpin);
     fclose(fpout);
 
-    printf("Output was successfully written on %s (%d byte).\n", output, writtenBytes);
+    printf("Output was successfully written on %s (%u byte).\n", output, writtenBytes);
     end_time = time(NULL);
     end_clock = clock();
     printf("Total time: %ld ms\n", (end_time - start_time) * 1000);
@@ -440,6 +539,33 @@ int getCells(const char* source, size_t soureSize, char (*buffer)[MAX_SIZE], siz
     return ret;
 }
 
+// int makeLineData(linedata_t* ld, const char* const name, const char* const totalTime, const char* const totalTimePer, const char* const totalTimeCpu, const char* const totalTimeCpuPer, const char* const hits, int stage, int space, int end){
+//     //ld = (linedata_t*)malloc(sizeof(linedata_t));
+//     hkmalloc(&ld, sizeof(linedata_t));
+//     /* 文字列のメモリを確保 */
+//     // ld->name         = (char*)malloc(sizeof(char) * strlen(name)+1);
+//     // ld->totaltime    = (char*)malloc(sizeof(char) * strlen(totalTime)+1);
+//     // ld->totalTimePer = (char*)malloc(sizeof(char) * strlen(totalTimePer)+1);
+//     // ld->totaltimecpu = (char*)malloc(sizeof(char) * strlen(totalTimeCpu)+1);
+//     // ld->totalCpuPer  = (char*)malloc(sizeof(char) * strlen(totalTimeCpuPer)+1);
+//     // ld->hits         = (char*)malloc(sizeof(char) * strlen(hits)+1);
+//     hkmalloc(&(ld->name), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totaltime), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totalTimePer), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totaltimecpu), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totalCpuPer), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->hits), sizeof(char) * strlen(name)+1);
+//     /* 文字列のコピー */
+//     strncpy(ld->name, name, strlen(name)+1);
+//     strncpy(ld->totaltime, totalTime, strlen(totalTime)+1);
+//     strncpy(ld->totalTimePer, totalTimePer, strlen(totalTimePer)+1);
+//     strncpy(ld->totaltimecpu, totalTimeCpu, strlen(totalTimeCpu)+1);
+//     strncpy(ld->totalCpuPer, totalTimeCpuPer, strlen(totalTimeCpuPer)+1);
+//     strncpy(ld->hits, hits, strlen(hits)+1);
+//     ld->stage = stage;
+//     ld->space = space;
+// }
+
 int extractInsideDQ(char* str) {
     int i=1, j=0;
     int space = 0;
@@ -470,6 +596,22 @@ double timetof(const char* time, size_t sizeOfTime) {
     double ret = atof(tmp);
     free(tmp);
     
+    return ret;
+}
+
+double timepertof(const char* timeper, size_t sizeOfTimeper) {
+    if(!isNullEnd(timeper, sizeOfTimeper)) { return (double)0; }
+
+    char* tmp = (char*)malloc(sizeof(char) * sizeOfTimeper);
+    int i=0;
+    while(timeper[i] != '%' && timeper[i] != '\n') {
+        tmp[i] = timeper[i];
+        i++;
+    }
+    tmp[i] = '\0';
+    double ret = atof(tmp);
+    free(tmp);
+
     return ret;
 }
 
@@ -507,59 +649,58 @@ linedata_t* findWriteLine(linedata_t* ld){
     int flag=0;
 
 
-    /* 末端 -> RepositoryImplを優先 */
-    if(isEnd(ld)) {
+    /* RepositoryImplを優先 */
+    write = ld;
+    strncpy(filter_in[0], RepositoryImpl, sizeof(filter_in[0]));
+    strncpy(filter_out[0], TypedQueryWrapper, sizeof(filter_out[0]));
+    strncpy(filter_out[1], ListMultiExecutor, sizeof(filter_out[1]));
+    strncpy(filter_out[2], SubjectContext, sizeof(filter_out[2]));
+    strncpy(filter_out[3], "$", sizeof(filter_out[3]));
+    do {
+        write = write->prev;
+        if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){                            
+            flag=1;
+            break;
+        }
+    } while(isSameTimeBefore(write));
+
+    /* $がついててもRepositoryImplがあればこちらを優先 */
+    if(flag==0){
         write = ld;
-        strncpy(filter_in[0], RepositoryImpl, sizeof(filter_in[0]));
-        strncpy(filter_out[0], TypedQueryWrapper, sizeof(filter_out[0]));
-        strncpy(filter_out[1], ListMultiExecutor, sizeof(filter_out[1]));
-        strncpy(filter_out[2], SubjectContext, sizeof(filter_out[2]));
-        strncpy(filter_out[3], "$", sizeof(filter_out[3]));
         do {
             write = write->prev;
-            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){                            
+            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
                 flag=1;
                 break;
             }
         } while(isSameTimeBefore(write));
-
-        /* $がついててもRepositoryImplがあればこちらを優先 */
-        if(flag==0){
-            write = ld;
-            do {
-                write = write->prev;
-                if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
-                    flag=1;
-                    break;
-                }
-            } while(isSameTimeBefore(write));
-        }
-        
-        /* Repository */
-        if(flag==0){
-            write = ld;
-            strncpy(filter_in[0], Repository, sizeof(filter_in));
-            do {
-                write = write->prev;
-                if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){
-                    flag=1;
-                    break;
-                }
-            } while(isSameTimeBefore(write));
-        }
-
-        /* Repository(セクション記号有り) */
-        if(flag==0){
-            write = ld;
-            do {
-                write = write->prev;
-                if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
-                    flag=1;
-                    break;
-                }
-            } while(isSameTimeBefore(write));
-        }
     }
+    
+    /* Repository */
+    if(flag==0){
+        write = ld;
+        strncpy(filter_in[0], Repository, sizeof(filter_in));
+        do {
+            write = write->prev;
+            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){
+                flag=1;
+                break;
+            }
+        } while(isSameTimeBefore(write));
+    }
+
+    /* Repository(セクション記号有り) */
+    if(flag==0){
+        write = ld;
+        do {
+            write = write->prev;
+            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
+                flag=1;
+                break;
+            }
+        } while(isSameTimeBefore(write));
+    }
+
 
     /* $の無いメソッド・Filtered out以外 */
     if(flag==0){
@@ -660,11 +801,65 @@ bool isEnd(linedata_t* linedata) {
     return (linedata->space == linedata->prev->space || linedata->end == 1);
 }
 
+/* return ld2 - ld1 */
 int stagecmp(linedata_t* ld1, linedata_t* ld2) {
     if(ld1==NULL && ld2==NULL) { return 0;}
     else if(ld1==NULL) { return ld2->stage; }
     else if(ld2==NULL) { return -(ld1->stage); }
     return ld2->stage - ld1->stage;
+}
+
+/* num1がnum2+-errorかを判定 num1が範囲内だったら0を返す */
+int dcompforaddld(const double num1, const double num2, const int methodcnt) {
+    double error = 0;
+    if(fmod(num1, 1) == 0 || fmod(num2, 1) == 0) {
+        error = 1 * methodcnt;
+    }
+    else {
+        error = 0.1 * methodcnt;
+    }
+    if(num2 - error <= num1 && num1 <= num2 + error) { return 0; }
+    else { return 1; }
+}
+
+int maketime(char* time, size_t sizeOfTime, double dtime) {
+    snprintf(time, sizeOfTime, "%g", dtime);
+    if(strlen(time)==1) { snprintf(time, sizeOfTime, "%s.00 ms", time); }
+    else if(strlen(time)==2) { snprintf(time, sizeOfTime, "%s.0 ms", time); }
+    else if(strlen(time)==3) { snprintf(time, sizeOfTime, "%s ms", time); }
+
+    else if(!strchr(time, '.') && strlen(time) >= 4) {
+        /* 桁数 */
+        const int digits = strlen(time);
+        /* カンマの数を求める */
+        const int comma = (digits-1 / 3); /* (桁数-1)/3 余りは切り捨て */
+        char tmp[digits+comma+3+1]; /* digits + comma + " ms" + '\0 */
+
+        tmp[sizeof(tmp)-1] = '\0';
+        int i=digits;
+        int j=0; /* カンマの数記録 */
+        while(i>=0) {
+            tmp[i-j] = time[i];
+            if((i-j)%4 == 1) {
+                j++;
+                tmp[i-j] = ',';
+            }
+            i--;
+        }
+
+        snprintf(time, sizeOfTime, "%s ms", tmp);
+    }
+
+    return strlen(time);
+}
+
+int isNumberc(char c){
+    return ('0' <= c && c <= '9');
+}
+
+int makeper(char* per, size_t sizeOfPer, double dper) {
+    snprintf(per, sizeOfPer, "%g%%", dper);
+    return strlen(per);
 }
 
 /* 書き込む行：ひとつ前のstage内で最後に記録されたメソッド */
@@ -690,7 +885,7 @@ int writelinedata(FILE* fpout, const linedata_t* linedata, const int maxstage){
         indent, linedata->name, nameToTime, linedata->totaltime, linedata->totalTimePer);
 #endif
 #ifdef cmptest
-    writtenChars = fprintf(fpout, ",%s%s\n",indent, linedata->name);
+    writtenChars = fprintf(fpout, "%s%s\n",indent, linedata->name);
 #endif
 
     return writtenChars * sizeof(char);
