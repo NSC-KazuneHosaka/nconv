@@ -9,7 +9,7 @@
 #include <errno.h>
 
 #define debug
-#define cmptest
+// #define cmptest
 
 #define NAME 0
 #define TOTAL_TIME 1
@@ -407,9 +407,7 @@ int main(int argc, char* argv[]) {
             ) {                
                 strncpy(buf[NAME], filtered_out, sizeof(buf[NAME]));
                 double timediff = ldptime - totaltime;
-                printf("(%g / %g) * 100 = %g\n", timediff, maxtime, (timediff/maxtime) * 100);
                 double timeperdiff = (timediff/maxtime) * 100;
-                printf("timeperdiff:%g\n", timeperdiff);
                 double cpudiff = ldptimecpu - timecpu;
                 double cpuperdiff = (cpudiff/maxtimecpu) * 100;
                 maketime(buf[TOTAL_TIME], sizeof(buf[TOTAL_TIME]), timediff);
@@ -448,11 +446,10 @@ int main(int argc, char* argv[]) {
                 ldptr = (ldp_t*)malloc(sizeof(ldp_t));
                 ldptr->ld = addld;
                 ldptr->next = tmp->next;
-                ldptr->next->prev = ldptr;
+                if(ldptr->next != NULL) { ldptr->next->prev = ldptr; }
                 ldptr->prev = tmp;
                 ldptr->prev->next = ldptr;
-
-                ldptr = ldptrprev;          
+                ldptr = ldptrprev;
             }
         }
         ldptr = ldptr->next;
@@ -849,7 +846,6 @@ int maketime(char* time, size_t sizeOfTime, double dtime) {
 
         snprintf(time, sizeOfTime, "%s ms", tmp);
     }
-
     return strlen(time);
 }
 

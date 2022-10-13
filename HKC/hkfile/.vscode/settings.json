@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "hkmem.h": "c",
+        "hkfile.h": "c"
+    }
+}
