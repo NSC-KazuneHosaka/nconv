@@ -2,6 +2,8 @@
 #define HKSTR_H
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <stdbool.h>
 
 #define HKSTR_MAXSIZE 1024
 
@@ -9,7 +11,9 @@ int hkstrinit(void);
 
 int hkstrGetError(void);
 
-int isHKstrNotError(void);
+bool isHKstrNotError(void);
+
+bool isNullEnd(const char* const str, size_t size);
 
 /* This uses hkmalloc.
    Please call by reference of pointer
@@ -33,22 +37,37 @@ int hkcalloc_and_cpyW(wchar_t** target, size_t want, size_t size, const wchar_t*
 
 /* If match this returns not 0. */
 /* If unmatch this returns 0. */
-int hkstrmatch(const char* const target, const char* const str);
+int strmatch(const char* const target, const char* const str);
 /* If match this returns not 0. */
 /* If unmatch this returns 0. */
-int hkstrmatchW(const wchar_t* const target, const wchar_t* const str);
+int strmatchW(const wchar_t* const target, const wchar_t* const str);
 
 /*
 If all matches or occures error this returns 1 or more.
 If any one of them does not match this return 0.
 Use isHKstrNotError() to see if an error occurred.
 */
-int hkstrmatches(const char* const target, const char** const strs, const unsigned int numOfStrs);
+int strmatches(const char* const target, const char** const strs, const unsigned int numOfStrs);
 /*
 If all matches or occures error this returns 1 or more.
 If any one of them does not match this return 0.
 Use isHKstrNotError() to see if an error occurred.
 */
-int hkstrmatchesW(const wchar_t* const target, wchar_t** strs, const unsigned int numOfStrs);
+int strmatchesW(const wchar_t* const target, wchar_t** strs, const unsigned int numOfStrs);
+
+/* hkstrmatch, can use format designator. */
+int strmatchf(const char* const target, const char* const format, ...);
+
+/* hkstrmatchW, can use format defignator. */
+int strmatchfW(const wchar_t* const target, const wchar_t* const _format, ...);
+
+/* This is same to execute "strmatchf(target, "*%s*", str)". */
+int contains(const char* const target, const char* const str);
+
+/* This is same to execute "strmatchfW(target, L"*%ls*", str)". */
+int containsW(const wchar_t* const target, const wchar_t* const str);
+
+int containsList(const char* const target, const char** const strList, const unsigned int numOfStr);
+int containsListW(const wchar_t* const target, const wchar_t** const strList, const unsigned int numOfStr);
 
 #endif

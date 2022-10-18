@@ -11,6 +11,9 @@ int hkfileGetError(void);
 
 int hkfileShowErrors(FILE* stream);
 
+int hkOpenFile(FILE** fpp, const char* fileName, const char* openMode);
+int hkOpenFileW(FILE** fpp, const wchar_t* fileName, const wchar_t* openMode);
+
 /* set str to filter_in */
 /* Able to use ? and * as a wild-card */
 /* This uses hkmalloc. */

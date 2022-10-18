@@ -1,5 +1,4 @@
 #include "npsconverter.h"
-#include "HKC/hkc.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -24,7 +23,6 @@
 #define NTS 0x1
 #define SECTION 0x2
 #define FIlTERD_OUT 0x3
-
 
 typedef struct lineData {
     char* name;
@@ -52,12 +50,15 @@ void error(void) {
     if(logfp!=NULL) { fclose(logfp); }
 }
 
+
+int openFile(FILE** fpp, const char* fileName, const char* openMode);
+bool isNullEnd(const char* str, size_t maxsize);
 int getCells(const char* source, size_t soureSize, char (*buffer)[MAX_SIZE], size_t bufSize[MAX_SIZE], const int numOfCells);
 int extractInsideDQ(char* str);
 double timetof(const char* time, size_t sizeOfTime);
 double timepertof(const char* timeper, size_t sizeOfTimeper);
 double extRound(const double num, const int index);
-int contains_(const char* str, const char (*filterArr)[MAX_SIZE], const int numOfStr);
+int contains(const char* str, const char (*filterArr)[MAX_SIZE], const int numOfStr);
 linedata_t* findWriteLine(linedata_t* ld);
 int exclutionUnecFo(ldp_t* ldptr, linedata_t* lastnts);
 bool isSameName(linedata_t* linedata1, linedata_t* linedata2);
@@ -74,8 +75,11 @@ int writelinedata(FILE* fpout, const linedata_t* linedata, const int maxstage);
 void free_lineData(linedata_t* linedata);
 void free_linedataptr(ldp_t* ldptr);
 
-int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile) {
+
+int main(int argc, char* argv[]) {
     char logFileName[] = "a.log";
+    char input[MAX_SIZE] = {0};
+    char output[MAX_SIZE] = {0};
     FILE* fpin = NULL;
     FILE* fpout = NULL;
     char linebuf[MAX_SIZE] = {0};
@@ -118,7 +122,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
 
     hkloginit();
     hklog_customFormat(ALL, ALL);
-    if(hkOpenFile(&logfp, logFileName, "w") != 0) {
+    if(openFile(&logfp, logFileName, "w") != 0) {
         printf("openFile() error : %s\n", logFileName);
         error();
         return 1;
@@ -128,17 +132,40 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
 
     hkmeminit();
 
+    /* 入力ファイル名 */
+    if (argc <= 1){
+        printf("Input the csv file : ");
+        fgets(input, sizeof(input), stdin);
+
+        i=0;
+        while(i<sizeof(input)){
+            if(input[i] == '\n'){
+                input[i] = '\0';
+                break;
+            }
+            i++;
+        }
+    }
+    else{
+        strncpy(input, argv[1], sizeof(input));
+        if(!isNullEnd(input, sizeof(input))) {
+            printf("The input file is incorrect or name is too long.\n");
+            error();
+            return 1;
+        }
+    }
+
     start_clock = clock();
     start_time = time(NULL);
 
     /* ファイルオープン */
-    if(hkOpenFileW(&fpin, sourceFile, L"r") != 0) {
+    if(openFile(&fpin, input, "r") != 0) {
         printf("openFile() error\n");
         error();
         return 1;
     }
 
-    printf("opened file : %s\n", sourceFile);
+    printf("opened file : %s\n", input);
 
     /* 一行目をカンマ区切りで取得 */
 	fgets(tokbuf, sizeof(tokbuf), fpin);
@@ -160,13 +187,24 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
 
 
     /* 出力ファイルオープン */
-    if(hkOpenFileW(&fpout, outputFile, L"w") != 0) {
+    if(argc >= 3){
+        strncpy(output, argv[2], sizeof(output));
+        if(!isNullEnd(output, sizeof(output))) {
+            printf("The output file is incorrect or name is too long.\n");
+            printf("make output.csv\n");
+            strncpy(output, "output.csv", sizeof(output));
+        }
+    }
+    else {
+        snprintf(output, sizeof(output)-1, "%s%s", "out_", input);
+    }
+    if(openFile(&fpout, output, "w") != 0) {
         printf("openFile() error\n");
         error();
         return 1;
     }
 
-    printf("write to %s\n", outputFile);
+    printf("write to %s\n", output);
 
     /* タスク名の行を消費 */
     fgets(linebuf, sizeof(linebuf), fpin);
@@ -299,8 +337,8 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
                             ldptr->prev->ld = findWriteLine(ldptr->prev->ld->next); /* 元々保持していた行の次の行から遡行させる */
                         }
                     }
-                    /* lastntsの更新 */
-                    if(contains_(ldptr->ld->name, filter_in, 1) || (isSameNameStr(ldptr->ld, filtered_out) && stagecmp(ldptr->prev->ld, ldptr->ld) < 0)) {
+                    /* lastntsの更新 */      
+                    if(contains(ldptr->ld->name, filter_in, 1) || (isSameNameStr(ldptr->ld, filtered_out) && stagecmp(ldptr->prev->ld, ldptr->ld) < 0)) {                     
                         lastnts = ldptr->ld;
                     }
                 }
@@ -326,7 +364,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
         free(ldptr);
     }
 
-
+    /* ここユーザー関数にしたーーーーーい */
     /* 分岐の前と分岐後の合計で実行時間が違わないかの確認 
        必要に応じてFiltered outを挿入*/
     ldptr = ldptrstart;
@@ -425,7 +463,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
     fclose(fpin);
     fclose(fpout);
 
-    printf("Output was successfully written on %s (%u byte).\n", outputFile, writtenBytes);
+    printf("Output was successfully written on %s (%u byte).\n", output, writtenBytes);
     end_time = time(NULL);
     end_clock = clock();
     printf("Total time: %ld ms\n", (end_time - start_time) * 1000);
@@ -435,6 +473,29 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
 	return 0;
 }
 
+
+int openFile(FILE** fpp, const char* fileName, const char* openMode){
+    int i=0;
+
+    *fpp = fopen(fileName, openMode);
+
+    if (fpp == NULL) {
+        return 1;
+    }
+
+    return 0;
+}
+
+bool isNullEnd(const char* str, size_t maxsize) {
+    int i=0;
+    while (i<maxsize) {
+        if(str[i] == '\0'){ return true; }
+        i++;
+    }
+
+    return false;
+    
+}
 
 /* 返り値：sourceからbufferに書き込まれた文字列の個数 */
 int getCells(const char* source, size_t soureSize, char (*buffer)[MAX_SIZE], size_t bufSize[MAX_SIZE], const int numOfCells) {
@@ -466,6 +527,32 @@ int getCells(const char* source, size_t soureSize, char (*buffer)[MAX_SIZE], siz
     return ret;
 }
 
+// int makeLineData(linedata_t* ld, const char* const name, const char* const totalTime, const char* const totalTimePer, const char* const totalTimeCpu, const char* const totalTimeCpuPer, const char* const hits, int stage, int space, int end){
+//     //ld = (linedata_t*)malloc(sizeof(linedata_t));
+//     hkmalloc(&ld, sizeof(linedata_t));
+//     /* 文字列のメモリを確保 */
+//     // ld->name         = (char*)malloc(sizeof(char) * strlen(name)+1);
+//     // ld->totaltime    = (char*)malloc(sizeof(char) * strlen(totalTime)+1);
+//     // ld->totalTimePer = (char*)malloc(sizeof(char) * strlen(totalTimePer)+1);
+//     // ld->totaltimecpu = (char*)malloc(sizeof(char) * strlen(totalTimeCpu)+1);
+//     // ld->totalCpuPer  = (char*)malloc(sizeof(char) * strlen(totalTimeCpuPer)+1);
+//     // ld->hits         = (char*)malloc(sizeof(char) * strlen(hits)+1);
+//     hkmalloc(&(ld->name), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totaltime), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totalTimePer), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totaltimecpu), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->totalCpuPer), sizeof(char) * strlen(name)+1);
+//     hkmalloc(&(ld->hits), sizeof(char) * strlen(name)+1);
+//     /* 文字列のコピー */
+//     strncpy(ld->name, name, strlen(name)+1);
+//     strncpy(ld->totaltime, totalTime, strlen(totalTime)+1);
+//     strncpy(ld->totalTimePer, totalTimePer, strlen(totalTimePer)+1);
+//     strncpy(ld->totaltimecpu, totalTimeCpu, strlen(totalTimeCpu)+1);
+//     strncpy(ld->totalCpuPer, totalTimeCpuPer, strlen(totalTimeCpuPer)+1);
+//     strncpy(ld->hits, hits, strlen(hits)+1);
+//     ld->stage = stage;
+//     ld->space = space;
+// }
 
 int extractInsideDQ(char* str) {
     int i=1, j=0;
@@ -525,7 +612,7 @@ double extRound(const double num, const int index) {
     return p;
 }
 
-int contains_(const char* str, const char (*filterArr)[MAX_SIZE], const int numOfStr) {
+int contains(const char* str, const char (*filterArr)[MAX_SIZE], const int numOfStr) {
     int numOfFilterd = 0;
     int i=0;
     while(i<numOfStr){
@@ -559,7 +646,7 @@ linedata_t* findWriteLine(linedata_t* ld){
     strncpy(filter_out[3], "$", sizeof(filter_out[3]));
     do {
         write = write->prev;
-        if(contains_(write->name, filter_in, 1) && !contains_(write->name, filter_out, 4)){
+        if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){                            
             flag=1;
             break;
         }
@@ -570,7 +657,7 @@ linedata_t* findWriteLine(linedata_t* ld){
         write = ld;
         do {
             write = write->prev;
-            if(contains_(write->name, filter_in, 1) && !contains_(write->name, filter_out, 3)){
+            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
                 flag=1;
                 break;
             }
@@ -583,7 +670,7 @@ linedata_t* findWriteLine(linedata_t* ld){
         strncpy(filter_in[0], Repository, sizeof(filter_in));
         do {
             write = write->prev;
-            if(contains_(write->name, filter_in, 1) && !contains_(write->name, filter_out, 4)){
+            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 4)){
                 flag=1;
                 break;
             }
@@ -595,7 +682,7 @@ linedata_t* findWriteLine(linedata_t* ld){
         write = ld;
         do {
             write = write->prev;
-            if(contains_(write->name, filter_in, 1) && !contains_(write->name, filter_out, 3)){
+            if(contains(write->name, filter_in, 1) && !contains(write->name, filter_out, 3)){
                 flag=1;
                 break;
             }
@@ -611,7 +698,7 @@ linedata_t* findWriteLine(linedata_t* ld){
         strncpy(filter_out[2], "$", sizeof(filter_out[2]));
         do {
             write = write->prev;                        
-            if(!contains_(write->name, filter_out, 3)){
+            if(!contains(write->name, filter_out, 3)){
                 flag=1;
                 break;
             }
@@ -625,7 +712,7 @@ linedata_t* findWriteLine(linedata_t* ld){
         strncpy(filter_out[1], self_time, sizeof(filter_out[1]));
         do {
             write = write->prev;
-            if(!contains_(write->name, filter_out, 2)){
+            if(!contains(write->name, filter_out, 2)){
                 flag=1;
                 break;
             }
