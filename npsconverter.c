@@ -112,11 +112,12 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
     int roop = 0;
     int i=0, j=0;
 
-    time_t start_time, end_time;
-    clock_t start_clock, end_clock;
 
+    if(hkcinit() != 0) { 
+        printf("hkcinit() error\n");
+        return 1;
+    }
 
-    hkloginit();
     hklog_customFormat(ALL, ALL);
     if(hkOpenFile(&logfp, logFileName, "w") != 0) {
         printf("openFile() error : %s\n", logFileName);
@@ -126,11 +127,6 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
 
     hklog(logfp, INFO, "start logging\n");
 
-    hkmeminit();
-
-    start_clock = clock();
-    start_time = time(NULL);
-
     /* ファイルオープン */
     if(hkOpenFileW(&fpin, sourceFile, L"r") != 0) {
         printf("openFile() error\n");
@@ -138,7 +134,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
         return 1;
     }
 
-    printf("opened file : %s\n", sourceFile);
+    wprintf(L"opened file : %ls\n", sourceFile);
 
     /* 一行目をカンマ区切りで取得 */
 	fgets(tokbuf, sizeof(tokbuf), fpin);
@@ -156,7 +152,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
         error();
         return 1;
     }
-    printf("check low 1 : OK\n");
+    hklog(logfp, INFO, "check low 1 : OK\n");
 
 
     /* 出力ファイルオープン */
@@ -166,7 +162,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
         return 1;
     }
 
-    printf("write to %s\n", outputFile);
+    wprintf(L"write to %ls\n", outputFile);
 
     /* タスク名の行を消費 */
     fgets(linebuf, sizeof(linebuf), fpin);
@@ -300,7 +296,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
                         }
                     }
                     /* lastntsの更新 */
-                    if(contains_(ldptr->ld->name, filter_in, 1) || (isSameNameStr(ldptr->ld, filtered_out) && stagecmp(ldptr->prev->ld, ldptr->ld) < 0)) {
+                    if(contains(ldptr->ld->name, "nts.") || (isSameNameStr(ldptr->ld, filtered_out) && stagecmp(ldptr->prev->ld, ldptr->ld) < 0)) {
                         lastnts = ldptr->ld;
                     }
                 }
@@ -415,8 +411,7 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
         writtenBytes += writelinedata(fpout, ldptr->ld, maxstage);
         ldptr = ldptr->next;
     }
-    
-    printf("convert was successful.\n");
+
 
     /* linedataのメモリ開放 */
     free_lineData(ldstart);
@@ -425,14 +420,8 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
     fclose(fpin);
     fclose(fpout);
 
-    printf("Output was successfully written on %s (%u byte).\n", outputFile, writtenBytes);
-    end_time = time(NULL);
-    end_clock = clock();
-    printf("Total time: %ld ms\n", (end_time - start_time) * 1000);
-    printf("CPU Time : %.1f ms\n", ((double)(end_clock - start_clock) / CLOCKS_PER_SEC) * 1000);
-
     if(logfp != NULL) { fclose(logfp); }
-	return 0;
+	return writtenBytes;
 }
 
 
