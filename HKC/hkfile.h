@@ -31,6 +31,12 @@ int hkDelFilter_out(const wchar_t* const str);
 /* make directory named _dirname */
 int makedir(const char* _dirpath);
 
+int makedir_(const char* _dirpath, char** madeDir);
+
+int makedirW(const wchar_t* _dirpath);
+
+int makedirW_(const wchar_t* _dirpath, wchar_t** _madeDir);
+
 /* show all files in _dirpath to stream */
 int showdir(FILE* stream, const wchar_t* _dirpath);
 /* show filtered files in _dirpath to stream */

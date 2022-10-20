@@ -1,2 +1,24 @@
-16:26:43.368 [INFO] npsconvert(128) : start logging
-16:26:43.371 [INFO] npsconvert(155) : check low 1 : OK
+20:04:36.797[INFO] main(42) : start logging
+20:04:36.797[INFO] main(64) : csv files: Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_10000threadonly.csv
+                                         Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_1000threadonly.csv
+                                         Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_2000threadonly.csv
+                                         Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_4000threadpnly.csv
+20:04:36.805[INFO] npsconvert(123) : opened file : Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_10000threadonly.csv
+20:04:36.805[INFO] npsconvert(141) : check low 1 : OK
+20:04:36.805[INFO] npsconvert(151) : opened file : 202210202004_1\Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_10000threadonly.csv
+20:04:36.837[INFO] npsconvert(408) : Output was successfully written on  (4454 byte).
+20:04:36.837[INFO] npsconvert(123) : opened file : Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_1000threadonly.csv
+20:04:36.837[INFO] npsconvert(141) : check low 1 : OK
+20:04:36.845[INFO] npsconvert(151) : opened file : 202210202004_1\Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_1000threadonly.csv
+20:04:36.861[INFO] npsconvert(408) : Output was successfully written on  (2037 byte).
+20:04:36.869[INFO] npsconvert(123) : opened file : Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_2000threadonly.csv
+20:04:36.869[INFO] npsconvert(141) : check low 1 : OK
+20:04:36.869[INFO] npsconvert(151) : opened file : 202210202004_1\Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_2000threadonly.csv
+20:04:36.893[INFO] npsconvert(408) : Output was successfully written on  (2357 byte).
+20:04:36.893[INFO] npsconvert(123) : opened file : Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_4000threadpnly.csv
+20:04:36.893[INFO] npsconvert(141) : check low 1 : OK
+20:04:36.893[INFO] npsconvert(151) : opened file : 202210202004_1\Œ’fŒ‹‰Ê‘gD•ªÍ-Œ’fŒ‹‰ÊW’c•ªÍ_4000threadpnly.csv
+20:04:36.917[INFO] npsconvert(408) : Output was successfully written on  (2628 byte).
+20:04:36.917[INFO] main(87) : all convert was successfully end, written 11476 bytes
+20:04:36.925[INFO] main(98) : Total time: 0 ms
+20:04:36.925[INFO] main(99) : CPU Time : 136.0 ms

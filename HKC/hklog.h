@@ -17,36 +17,46 @@
 #define HKLOG_LEVELS 6
 
 /* Log output mode */
-#define ALL 0x0fffffff
+#define ALL 0x0000ffff
 #define NORMAL ALL - INFO
 #define NOLOGOUT 0
 
 /* custom log format */
+
 /* TIME */
-#define NOTIME 0x01000000
+#define NOTIME 0x00000010
 #define TIME_HMSM 0b0001
 #define TIME_HMS 0b0010
 #define TIME_HM 0b0100
 #define TIME_H 0b1000
 /* LOGLEVEL */
-#define NOLOGLEVEL 0x02000000
+#define NOLOGLEVEL 0x00000020
 /* FUNC */
-#define NOFUNC 0x04000000
-#define NOLINE 0x08000000
-
+#define NOFUNC 0x00000040
+#define NOLINE 0x00000080
+/* NEWLINE */
+#define NL_AUTO   0x00000100
+#define NL_MANUAL 0x00000200
+/* DEFAULT */
+#define DEFAULT TIME_HMSM + NL_AUTO
 
 /* output : [hour:minute:sec][log level] funcname(line) : log */
-#define hklog(fp, logLevel, log, ...) hkLog(fp, logLevel, __FUNCTION__, log, __LINE__, ##__VA_ARGS__)
+#define hklog(logLevel, log, ...) hkLog(logLevel, __FUNCTION__, log, __LINE__, ##__VA_ARGS__)
 
-#define hklog_std(fp, logLevel, log, ...) hkLog_std(fp, logLevel, __FUNCTION__, log, __LINE__, ##__VA_ARGS__)
+#define hklogW(logLevel, log, ...) hkLogW(logLevel, __FUNCTION__, log, __LINE__, ##__VA_ARGS__)
 
 
 int hkloginit(void);
 
-/* output : [hour:minute:sec][log level] func(line) : log */
-int hkLog(FILE* _fp, const unsigned int _LogLevel, const char* const _FuncName, const char* const _Log, const unsigned int _Line, ...);
+int hkSetLogfp(FILE* logfp);
 
-int hkLog_std(FILE* _fp, const unsigned int _LogLevel, const char* const _FuncName, const char* const _Log, const unsigned int _Line, ...);
+/* output : [hour:minute:sec][log level] func(line) : log */
+int hkLog(const unsigned int _LogLevel, const char* const _FuncName, const char* const _Log, const unsigned int _Line, ...);
+
+
+/* hklog(), using wchar_t to _Log. */
+int hkLogW(const unsigned int _LogLevel, const char* const _FuncName, const wchar_t* const _Log, const unsigned int _Line, ...);
+
 
 /* ALL(default), INFO, WARNING, ERR, FATAL, STOP, NORMAL(other than NOMAL), NOLOGOUT */
 void hklog_outputMode(const unsigned int _logMode_std, const unsigned int _logMode_logFile);
@@ -61,7 +71,8 @@ int hklog_outputMode_file(const unsigned int _logMode_logFile);
 TIME : TIME_HMSM(default), TIME_HMS, TIME_HM, TIME_H
 LOGLEVEL : NOLOGLEVEL
 FUNC : NOFUNC, NOLINE
-set ALL to reset
+NEWLINE : NL_AUTO(default), NL_MANUAL
+set DEFAULT to reset
 */
 int hklog_customFormat(const unsigned int _logFormat_logFile, const unsigned int _logFormat_std);
 
@@ -69,7 +80,8 @@ int hklog_customFormat(const unsigned int _logFormat_logFile, const unsigned int
 TIME : TIME_HMSM(default), TIME_HMS, TIME_HM, TIME_H
 LOGLEVEL : NOLOGLEVEL
 FUNC : NOFUNC, NOLINE
-set ALL to reset
+NEWLINE : NL_AUTO(default), NL_MANUAL
+set DEFAULT to reset
 */
 int hklog_customFormat_file(const unsigned int _logFormat_logFile);
 
@@ -77,7 +89,8 @@ int hklog_customFormat_file(const unsigned int _logFormat_logFile);
 TIME : TIME_HMSM(default), TIME_HMS, TIME_HM, TIME_H
 LOGLEVEL : NOLOGLEVEL
 FUNC : NOFUNC, NOLINE
-set ALL to reset
+NEWLINE : NL_AUTO(default), NL_MANUAL
+set DEFAULT to reset
 */
 int hklog_customFormat_std(const unsigned int _logFormat_std);
 

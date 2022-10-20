@@ -20,6 +20,7 @@
 
 #define MAX_SIZE 1024
 
+
 /* string filter */
 #define NTS 0x1
 #define SECTION 0x2
@@ -74,8 +75,7 @@ int writelinedata(FILE* fpout, const linedata_t* linedata, const int maxstage);
 void free_lineData(linedata_t* linedata);
 void free_linedataptr(ldp_t* ldptr);
 
-int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile) {
-    char logFileName[] = "a.log";
+unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile) {
     FILE* fpin = NULL;
     FILE* fpout = NULL;
     char linebuf[MAX_SIZE] = {0};
@@ -113,28 +113,14 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
     int i=0, j=0;
 
 
-    if(hkcinit() != 0) { 
-        printf("hkcinit() error\n");
-        return 1;
-    }
-
-    hklog_customFormat(ALL, ALL);
-    if(hkOpenFile(&logfp, logFileName, "w") != 0) {
-        printf("openFile() error : %s\n", logFileName);
-        error();
-        return 1;
-    }
-
-    hklog(logfp, INFO, "start logging\n");
-
     /* ファイルオープン */
     if(hkOpenFileW(&fpin, sourceFile, L"r") != 0) {
-        printf("openFile() error\n");
+        printf("openFile() error");
         error();
         return 1;
     }
 
-    wprintf(L"opened file : %ls\n", sourceFile);
+    hklogW(INFO, L"opened file : %ls", sourceFile);
 
     /* 一行目をカンマ区切りで取得 */
 	fgets(tokbuf, sizeof(tokbuf), fpin);
@@ -148,21 +134,21 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
      || strcmp(buf[TOTAL_TIME], "\"Total Time\"") != 0
      || strcmp(buf[TOTAL_TIME_CPU], "\"Total Time (CPU)\"") != 0
      || strcmp(buf[HITS], "\"Hits\"\n") != 0) {
-        printf("The input is incorrect. Check the version of VisualVM (2.4?) and input file.\n");
+        hklog(ERR, "The input is incorrect. Check the version of VisualVM (2.4?) and input file.\n");
         error();
         return 1;
     }
-    hklog(logfp, INFO, "check low 1 : OK\n");
+    hklog(INFO, "check low 1 : OK");
 
 
     /* 出力ファイルオープン */
     if(hkOpenFileW(&fpout, outputFile, L"w") != 0) {
-        printf("openFile() error\n");
+        hklog(ERR, "openFile() error");
         error();
         return 1;
     }
 
-    wprintf(L"write to %ls\n", outputFile);
+    hklogW(INFO, L"opened file : %ls", outputFile);
 
     /* タスク名の行を消費 */
     fgets(linebuf, sizeof(linebuf), fpin);
@@ -268,7 +254,6 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
     /* 出力する行の抽出 */
     linedata = ldstart;
     stage = 0;
-    strncpy(filter_in[0], "nts.", sizeof(filter_in));
     while(linedata != NULL) {
         if(linedata->prev != NULL){
             if((linedata->stage != stage || !isSameTimeBefore(linedata))) {
@@ -420,7 +405,8 @@ int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile)
     fclose(fpin);
     fclose(fpout);
 
-    if(logfp != NULL) { fclose(logfp); }
+    hklogW(INFO, L"Output was successfully written on %ls (%u byte).", fpout, writtenBytes);
+
 	return writtenBytes;
 }
 
@@ -528,6 +514,7 @@ linedata_t* findWriteLine(linedata_t* ld){
     linedata_t* write = NULL;
     char filter_in[5][MAX_SIZE] = {0};
     char filter_out[5][MAX_SIZE] = {0};
+    char** _filter_out = NULL;
     char RepositoryImpl[] = "RepositoryImpl";
     char Repository[] = "Repository";
     char filtered_out[] = "Filtered out";
@@ -546,6 +533,7 @@ linedata_t* findWriteLine(linedata_t* ld){
     strncpy(filter_out[1], ListMultiExecutor, sizeof(filter_out[1]));
     strncpy(filter_out[2], SubjectContext, sizeof(filter_out[2]));
     strncpy(filter_out[3], "$", sizeof(filter_out[3]));
+    make2dchar(&_filter_out, TypedQueryWrapper, ListMultiExecutor, SubjectContext, "$");
     do {
         write = write->prev;
         if(contains_(write->name, filter_in, 1) && !contains_(write->name, filter_out, 4)){

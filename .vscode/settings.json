@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "npsconverter.h": "c"
-    }
+        "npsconverter.h": "c",
+        "hkc.h": "c",
+        "stdio.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

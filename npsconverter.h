@@ -3,6 +3,6 @@
 
 #include <stdio.h>
 
-int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile);
+unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const outputFile);
 
 #endif
