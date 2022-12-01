@@ -6,6 +6,10 @@
 #include <wchar.h>
 #include <time.h>
 
+void pause(void) {
+    
+}
+
 int main(void) {
     char logFileName[] = "a.log";
     FILE* logfp = NULL;
@@ -31,6 +35,7 @@ int main(void) {
         printf("hkcinit() error\n");
         return 1;
     }
+    hktime_start();
 
     /* ログファイルオープン */
     if(hkOpenFile(&logfp, logFileName, "w") != 0) {
@@ -61,37 +66,46 @@ int main(void) {
     hkAddFilter_in(L"*.csv");
     getfilenamesWithFilter(&csvFiles, L".");
     hklog_customFormat(NL_MANUAL, NL_MANUAL);
-    hklogW(INFO, L"csv files: ");
+    hklogW(INFO, L"csv files:");
     unsigned int enumFormat = NOTIME + NOLOGLEVEL + NOFUNC + NOLINE;
     hklog_customFormat(enumFormat, enumFormat);
     i=0;
     while(csvFiles[i][0] != L'\0') {
-        if(i != 0) { hklog(INFO, "                                         "); } /* 41 spaces */
-        hklogW(INFO, L"%ls\n", csvFiles[i]);
+        hklogW(INFO, L"\n %ls", csvFiles[i]);
         i++;
     }
-    if(i==0) { hklog(INFO, "not found\n"); }
+    if(i==0) { hklog(INFO, " not found"); }
+    hklog(INFO, "\n");
     hklog_customFormat(DEFAULT, DEFAULT);
 
     /* npsconvert */
     i=0;
     while(csvFiles[i][0] != L'\0') {
         wchar_t* outputFile = NULL;
+        unsigned int writtenByte = 0;
         size = sizeof(wchar_t)*(wcslen(madedir) + wcslen(L"\\") + wcslen(csvFiles[i]) + 1);
         hkmalloc(&outputFile, size);
         snwprintf(outputFile, size, L"%ls\\%ls", madedir, csvFiles[i]);
-        writtenBytes += npsconvert(csvFiles[i], outputFile);
+
+        hklog_outputMode_std(NORMAL);
+        writtenByte = npsconvert(csvFiles[i], outputFile);
+        hklog_outputMode_std(ALL);
+        
+        if(writtenByte > 0) { hklogW(INFO, L"convert was success : %ls (written %u bytes)", csvFiles[i], writtenByte); }
+        else if(writtenByte == 0){ hklogW(WARNING, L"convert was unsuccess : %ls", csvFiles[i]); }
+        writtenBytes += writtenByte;
+        hkfree(&outputFile);
         i++;
     }
     
-    hklog(INFO, "all convert was successfully end, written %u bytes", writtenBytes);
-
-    hkmemreset();
+    hklog(INFO, "all convert was successfully end, written %u bytes at all.", writtenBytes);
     
     end_time = time(NULL);
     end_clock = clock();
-    hklog(INFO, "Total time: %ld ms", (end_time - start_time) * 1000);
-    hklog(INFO, "CPU Time : %.1f ms", ((double)(end_clock - start_clock) / CLOCKS_PER_SEC) * 1000);
+    hktime_lap();
+    hktime_t times = getmillisec();
+    hklog(INFO, "Total time: %.1f ms", times.time );
+    hklog(INFO, "CPU Time : %.1f ms", times.time_cpu);
 
     return 0;
 }

@@ -113,11 +113,23 @@ unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const ou
     int i=0, j=0;
 
 
+    if(sourceFile == NULL) {
+        hklog(ERR, "sourceFile is NULL.");
+        error();
+        return 0;
+    }
+
+    if(sourceFile[0] == '\0') {
+        hklog(ERR, "Name of sourceFile is empty.");
+        error();
+        return 0;
+    }
+
     /* ファイルオープン */
     if(hkOpenFileW(&fpin, sourceFile, L"r") != 0) {
         printf("openFile() error");
         error();
-        return 1;
+        return 0;
     }
 
     hklogW(INFO, L"opened file : %ls", sourceFile);
@@ -134,9 +146,8 @@ unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const ou
      || strcmp(buf[TOTAL_TIME], "\"Total Time\"") != 0
      || strcmp(buf[TOTAL_TIME_CPU], "\"Total Time (CPU)\"") != 0
      || strcmp(buf[HITS], "\"Hits\"\n") != 0) {
-        hklog(ERR, "The input is incorrect. Check the version of VisualVM (2.4?) and input file.\n");
-        error();
-        return 1;
+        hklogW(INFO, L"The low 1 of %ls is incorrect. Skip converting.", sourceFile);
+        return 0;
     }
     hklog(INFO, "check low 1 : OK");
 
@@ -145,7 +156,7 @@ unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const ou
     if(hkOpenFileW(&fpout, outputFile, L"w") != 0) {
         hklog(ERR, "openFile() error");
         error();
-        return 1;
+        return 0;
     }
 
     hklogW(INFO, L"opened file : %ls", outputFile);
@@ -259,6 +270,7 @@ unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const ou
             if((linedata->stage != stage || !isSameTimeBefore(linedata))) {
                 /* 出力する行を特定 */
                 linedata_t* write = findWriteLine(linedata);
+                hklog(INFO, "find writeline : %s", write->name);
                 /* ファイル出力する行へのポインタを保存 */
                 if(strcmp(write->totaltime, zeroms) != 0) {
                     /* ldptrのメモリ確保 */
@@ -281,8 +293,10 @@ unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const ou
                         }
                     }
                     /* lastntsの更新 */
-                    if(contains(ldptr->ld->name, "nts.") || (isSameNameStr(ldptr->ld, filtered_out) && stagecmp(ldptr->prev->ld, ldptr->ld) < 0)) {
-                        lastnts = ldptr->ld;
+                    if(ldptr->prev != NULL) {
+                        if(contains(ldptr->ld->name, "nts.") || (isSameNameStr(ldptr->ld, filtered_out) && stagecmp(ldptr->prev->ld, ldptr->ld) < 0)) {
+                            lastnts = ldptr->ld;
+                        }
                     }
                 }
             }
@@ -413,7 +427,7 @@ unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const ou
 
 /* 返り値：sourceからbufferに書き込まれた文字列の個数 */
 int getCells(const char* source, size_t soureSize, char (*buffer)[MAX_SIZE], size_t bufSize[MAX_SIZE], const int numOfCells) {
-    if(!isNullEnd(source, soureSize)) { return 1; }
+    if(!isNullEndOrProcessable(source, soureSize)) { return 1; }
     
     int i=0, j=0;
     int ret=0;
@@ -458,7 +472,7 @@ int extractInsideDQ(char* str) {
 
 
 double timetof(const char* time, size_t sizeOfTime) {
-    if(!isNullEnd(time, sizeOfTime)) { return (double)0; }
+    if(!isNullEndOrProcessable(time, sizeOfTime)) { return (double)0; }
 
     /* totaltime : <totaltime> ms */
     char* tmp = (char*)malloc(sizeof(char) * sizeOfTime);
@@ -476,7 +490,7 @@ double timetof(const char* time, size_t sizeOfTime) {
 }
 
 double timepertof(const char* timeper, size_t sizeOfTimeper) {
-    if(!isNullEnd(timeper, sizeOfTimeper)) { return (double)0; }
+    if(!isNullEndOrProcessable(timeper, sizeOfTimeper)) { return (double)0; }
 
     char* tmp = (char*)malloc(sizeof(char) * sizeOfTimeper);
     int i=0;
@@ -744,6 +758,7 @@ int writelinedata(FILE* fpout, const linedata_t* linedata, const int maxstage){
     int i=0;
     char indent[MAX_SIZE] = {0};
     char nameToTime[MAX_SIZE] = {0};
+    char write[MAX_SIZE] = {0};
     int writtenChars=0;
 
     while(i<linedata->stage) {
@@ -758,8 +773,9 @@ int writelinedata(FILE* fpout, const linedata_t* linedata, const int maxstage){
     }
 
 #ifndef cmptest
-    writtenChars = fprintf(fpout, "%s%s,%s\"%s\",%s\n",
-        indent, linedata->name, nameToTime, linedata->totaltime, linedata->totalTimePer);
+                    /* totalTimePerの末尾は "~~%"  "%s%%"とすることでwriteの末尾は "~~%%\"\n"となる。 */
+    snprintf(write, sizeof(write), "%s%s,%s\"%s\",\"%s%%\"\n", indent, linedata->name, nameToTime, linedata->totaltime, linedata->totalTimePer);
+    writtenChars = fprintf(fpout, write);
 #endif
 #ifdef cmptest
     writtenChars = fprintf(fpout, "%s%s\n",indent, linedata->name);
