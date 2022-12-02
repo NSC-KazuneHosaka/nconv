@@ -48,6 +48,8 @@ typedef struct linedataptr {
 } ldp_t;
 
 FILE* logfp = NULL;
+static double maxtime = 0;
+static double maxtimecpu = 0;
 
 void error(void) {
     if(logfp!=NULL) { fclose(logfp); }
@@ -92,8 +94,6 @@ unsigned int npsconvert(const wchar_t* const sourceFile, const wchar_t* const ou
     double totaltime = 0;
     double timeprev = 0;
     double timecpu = 0;
-    double maxtime = 0;
-    double maxtimecpu = 0;
     char totalPer[MAX_SIZE] = {0};
     char totalCpuPer[MAX_SIZE] = {0};
     char filter_in[5][MAX_SIZE] = {0};
@@ -715,32 +715,7 @@ int dcompforaddld(const double num1, const double num2, const int methodcnt) {
 }
 
 int maketime(char* time, size_t sizeOfTime, double dtime) {
-    snprintf(time, sizeOfTime, "%g", dtime);
-    if(strlen(time)==1) { snprintf(time, sizeOfTime, "%s.00 ms", time); }
-    else if(strlen(time)==2) { snprintf(time, sizeOfTime, "%s.0 ms", time); }
-    else if(strlen(time)==3) { snprintf(time, sizeOfTime, "%s ms", time); }
-
-    else if(!strchr(time, '.') && strlen(time) >= 4) {
-        /* 桁数 */
-        const int digits = strlen(time);
-        /* カンマの数を求める */
-        const int comma = (digits-1 / 3); /* (桁数-1)/3 余りは切り捨て */
-        char tmp[digits+comma+3+1]; /* digits + comma + " ms" + '\0 */
-
-        tmp[sizeof(tmp)-1] = '\0';
-        int i=digits;
-        int j=0; /* カンマの数記録 */
-        while(i>=0) {
-            tmp[i-j] = time[i];
-            if((i-j)%4 == 1) {
-                j++;
-                tmp[i-j] = ',';
-            }
-            i--;
-        }
-
-        snprintf(time, sizeOfTime, "%s ms", tmp);
-    }
+    snprintf(time, sizeOfTime, "%.02f ms", dtime);
     return strlen(time);
 }
 
